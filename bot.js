@@ -12,8 +12,8 @@ const SERVER_HOST = process.env.SERVER_HOST || 'per10.asaka.asia'
 const SERVER_PORT = Number(process.env.SERVER_PORT || 30060)
 const AUTH_MODE = process.env.AUTH_MODE || 'offline'
 const PASSWORD = process.env.BOT_PASS || '11qqaa22wwss'
-const JOIN_INTERVAL_MS = Number(process.env.JOIN_INTERVAL_MS || 150000) // 40s giữa mỗi bot
-const MAX_RETRY_BACKOFF = Number(process.env.MAX_RETRY_BACKOFF || 10 * 60 * 1000) // max 5 phút backoff
+const JOIN_INTERVAL_MS = Number(process.env.JOIN_INTERVAL_MS || 10000) // 40s giữa mỗi bot
+const MAX_RETRY_BACKOFF = Number(process.env.MAX_RETRY_BACKOFF || 5 * 60 * 1000) // max 5 phút backoff
 
 // load proxies_ok nếu có
 let proxies = []
