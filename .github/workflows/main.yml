@@ -1,0 +1,29 @@
+name: Run Slime Bot Fleet
+
+on:
+  workflow_dispatch:   # Cho phép chạy thủ công
+  push:                # Hoặc tự động chạy khi push code
+    branches: [ main ]
+
+jobs:
+  run-bots:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Start bot fleet
+        env:
+          SERVER_HOST: echomc.asia   # đổi host nếu cần
+          SERVER_PORT: "25565"
+          AUTH_MODE: "offline"                  # hoặc microsoft nếu acc MS
+          BOT_PASS: "11qqaa22wwss"
+        run: node bot.js
