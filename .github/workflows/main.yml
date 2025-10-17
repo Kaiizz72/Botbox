@@ -34,6 +34,6 @@ jobs:
       - name: Run bot
         run: node bot.js
         env:
-          SERVER_HOST: echomc.asia
-          SERVER_PORT: 25565
+          SERVER_HOST: per10.asaka.asia
+          SERVER_PORT: 30060
           BOT_PASS: 11qqaa22wwss
