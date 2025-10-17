@@ -7,7 +7,7 @@ const { GoalNear } = goals
 const collectBlockPlugin = require('mineflayer-collectblock').plugin
 const pvpPlugin = require('mineflayer-pvp').plugin
 
-const SERVER_HOST = process.env.SERVER_HOST || 'darknight.asakahost.net'
+const SERVER_HOST = process.env.SERVER_HOST || 'echomc.asia'
 const SERVER_PORT = Number(process.env.SERVER_PORT || 25565)
 const AUTH_MODE   = process.env.AUTH_MODE || 'offline'
 const PASSWORD    = process.env.BOT_PASS || '11qqaa22wwss'
