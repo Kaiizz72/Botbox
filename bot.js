@@ -1,4 +1,3 @@
-// bot.js
 const mineflayer = require('mineflayer')
 const { SocksProxyAgent } = require('socks-proxy-agent')
 const fs = require('fs')
@@ -9,34 +8,32 @@ const pvpPlugin = require('mineflayer-pvp').plugin
 
 const SERVER_HOST = process.env.SERVER_HOST || 'echomc.asia'
 const SERVER_PORT = Number(process.env.SERVER_PORT || 25565)
-const AUTH_MODE   = process.env.AUTH_MODE || 'offline'
-const PASSWORD    = process.env.BOT_PASS || '11qqaa22wwss'
+const AUTH_MODE = process.env.AUTH_MODE || 'offline'
+const PASSWORD = process.env.BOT_PASS || '11qqaa22wwss'
 
-const proxies = [
-  ...fs.readFileSync('SOCKS5_proxy.txt','utf8').split(/\r?\n/).map(s=>s.trim()).filter(Boolean),
-  ...fs.readFileSync('SOCKS4_proxy.txt','utf8').split(/\r?\n/).map(s=>s.trim()).filter(Boolean)
-]
-
-if (!proxies.length) {
-  console.error('Không tìm thấy proxy')
-  process.exit(1)
+let proxies = []
+try {
+  proxies = fs.readFileSync('proxies_ok.txt', 'utf8').split(/\r?\n/).filter(Boolean)
+} catch (e) {
+  console.log('⚠️ Không tìm thấy proxies_ok.txt, sẽ kết nối trực tiếp')
 }
 
-const BOT_NAMES = [
-  "meosube","nguyenphi","trananh","lethao","hoangcuong","duyphat","minhquan","thanhhuyen","linhchi","quanghuy",
-  "hoangnam","ngocanh","tuananh","thanhdat","thuytrang","minhtam","khanhlinh","hoanganh","ngocbao","trangpham"
-]
+const BOT_NAMES = ["meosube"] // 1 bot test
 
-function randInt(max){ return Math.floor(Math.random()*max) }
-function pickRandom(arr){ return arr[randInt(arr.length)] }
-
-function chooseProxy(){ return pickRandom(proxies) }
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
 
 function spawnWithProxy(username, attempt = 0) {
-  const proxyString = chooseProxy()
-  const proxyUrl = `socks://${proxyString}`
-  const agent = new SocksProxyAgent(proxyUrl)
-  console.log(`[${username}] Kết nối qua proxy ${proxyUrl} (lần ${attempt+1})`)
+  let agent = undefined
+  if (proxies.length) {
+    const proxy = pickRandom(proxies)
+    const proxyUrl = `socks://${proxy}`
+    agent = new SocksProxyAgent(proxyUrl)
+    console.log(`[${username}] connect via ${proxyUrl} (attempt ${attempt + 1})`)
+  } else {
+    console.log(`[${username}] connect direct (no proxy)`)
+  }
 
   const bot = mineflayer.createBot({
     host: SERVER_HOST,
@@ -51,6 +48,7 @@ function spawnWithProxy(username, attempt = 0) {
   bot.loadPlugin(pvpPlugin)
 
   let movement = null
+  bot._loggedIn = false
 
   bot.once('spawn', () => {
     console.log(`[${username}] Spawned!`)
@@ -58,61 +56,45 @@ function spawnWithProxy(username, attempt = 0) {
     movement = new Movements(bot, mcData)
     bot.pathfinder.setMovements(movement)
 
-    // spam register/login tới khi thành công
-    const regInt = setInterval(()=>{ try{ bot.chat(`/register ${PASSWORD} ${PASSWORD}`) }catch{} }, 5000)
-    const logInt = setInterval(()=>{ try{ bot.chat(`/login ${PASSWORD}`) }catch{} }, 4000)
-    setTimeout(()=>{ bot.chat("xin chào server!") }, 7000)
+    // auto /register + /login
+    const regInt = setInterval(() => { if (!bot._loggedIn) bot.chat(`/register ${PASSWORD} ${PASSWORD}`) }, 6000)
+    const logInt = setInterval(() => { if (!bot._loggedIn) bot.chat(`/login ${PASSWORD}`) }, 5000)
 
-    bot.on('message', msg => {
-      const txt = msg.toString().toLowerCase()
-      if (txt.includes('welcome') || txt.includes('login') || txt.includes('register')){
-        clearInterval(regInt); clearInterval(logInt);
+    bot.on('message', (msg) => {
+      const t = msg.toString().toLowerCase()
+      if (t.includes('welcome') || t.includes('successfully logged') || t.includes('you are now registered')) {
+        console.log(`[${username}] login ok!`)
+        bot._loggedIn = true
+        clearInterval(regInt)
+        clearInterval(logInt)
       }
     })
 
-    // loop hành vi: đánh người gần hoặc đi dạo
-    setInterval(async ()=>{
-      if (!bot.entity) return
-      const enemy = nearestPlayer(bot, 6)
-      if (enemy){
-        try{ await bot.pvp.attack(enemy) }catch{}
-      } else {
-        randomWalk(bot, movement)
-        if (Math.random()<0.3){ bot.setControlState('jump',true); setTimeout(()=>bot.setControlState('jump',false),500) }
+    setInterval(() => {
+      if (!bot.entity || !bot._loggedIn) return
+      randomWalk(bot, movement)
+      if (Math.random() < 0.3) {
+        bot.setControlState('jump', true)
+        setTimeout(() => bot.setControlState('jump', false), 400)
       }
     }, 4000)
   })
 
-  bot.on('end', ()=>{
-    console.log(`[${username}] Disconnected, retry...`)
-    setTimeout(()=>spawnWithProxy(username, attempt+1), 5000)
+  bot.on('kicked', (r) => console.log(`[${username}] kicked:`, r.toString()))
+  bot.on('end', () => {
+    console.log(`[${username}] disconnected, retry...`)
+    setTimeout(() => spawnWithProxy(username, attempt + 1), 8000)
   })
-
-  bot.on('error', (err)=>{
-    console.log(`[${username}] Error:`, err.message)
-  })
+  bot.on('error', (err) => console.log(`[${username}] error:`, err.message))
 }
 
-function nearestPlayer(bot, radius){
-  let best=null, bestDist=9999
-  for (const e of Object.values(bot.entities)){
-    if (e.type==='player' && e.username!==bot.username){
-      const d=bot.entity.position.distanceTo(e.position)
-      if (d<bestDist && d<=radius){ best=e; bestDist=d }
-    }
-  }
-  return best
-}
-
-function randomWalk(bot, move){
-  const dx=(Math.random()*10-5)|0
-  const dz=(Math.random()*10-5)|0
-  const p=bot.entity.position.offset(dx,0,dz)
+function randomWalk(bot, move) {
+  const dx = (Math.random() * 10 - 5) | 0
+  const dz = (Math.random() * 10 - 5) | 0
+  const p = bot.entity.position.offset(dx, 0, dz)
   bot.pathfinder.setMovements(move)
-  bot.pathfinder.setGoal(new GoalNear(p.x,p.y,p.z,2))
+  bot.pathfinder.setGoal(new GoalNear(p.x, p.y, p.z, 2))
 }
 
-// spawn 20 bot
-BOT_NAMES.forEach((name,i)=>{
-  setTimeout(()=>spawnWithProxy(name), i*10000)
-})
+// chỉ spawn 1 bot test
+spawnWithProxy(BOT_NAMES[0])
