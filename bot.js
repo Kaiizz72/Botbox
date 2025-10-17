@@ -60,7 +60,8 @@ function spawnWithProxy(username, attempt = 0) {
     port: SERVER_PORT,
     username,
     auth: AUTH_MODE,
-    agent
+    agent,
+    version:'1.20.4'
   })
 
   // load plugins safely
